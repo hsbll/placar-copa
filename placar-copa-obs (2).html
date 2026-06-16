@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Placar OBS — Copa do Mundo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* =========================================================================
+   PLACAR OBS — COPA DO MUNDO
+   Um único arquivo. Dois modos:
+   - SEM parâmetros na URL  -> painel de configuração
+   - COM ?event=...&league= -> overlay transparente para o OBS
+   Dados puxados ao vivo da API pública da ESPN.
+   ========================================================================= */
+
+:root{
+  --bg:#0a0e14; --surf:#141a24; --surf2:#1b2330; --surf3:#222c3b;
+  --line:#2a3340; --line2:#374256;
+  --txt:#e9eef4; --txt2:#94a1b4; --txt3:#5f6c7e;
+  --green:#13c56b; --green-d:#0ea65a;
+  --gold:#f4c84a;
+  --red:#ef4d56;
+  --radius:14px;
+  --cond:"Barlow Condensed", system-ui, sans-serif;
+  --sans:"Inter", system-ui, -apple-system, sans-serif;
+}
+
+*{box-sizing:border-box}
+
+/* ---- modo overlay: fundo totalmente transparente p/ o OBS ---- */
+html.mode-overlay, html.mode-overlay body{background:transparent !important;margin:0;height:100%;overflow:hidden}
+
+/* =========================  PAINEL DE CONFIG  ========================== */
+body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+.wrap{max-width:1080px;margin:0 auto;padding:32px 22px 80px}
+
+.masthead{display:flex;align-items:center;gap:16px;padding:6px 0 26px;
+  border-bottom:1px solid var(--line);margin-bottom:30px}
+.crest{width:46px;height:46px;border-radius:12px;flex:0 0 auto;
+  background:linear-gradient(150deg,var(--green),var(--green-d));
+  display:grid;place-items:center;box-shadow:0 6px 22px -8px var(--green)}
+.crest svg{width:26px;height:26px;color:#04130b}
+.masthead h1{font-family:var(--cond);font-weight:700;font-size:30px;letter-spacing:.4px;
+  margin:0;text-transform:uppercase;line-height:1}
+.masthead p{margin:3px 0 0;color:var(--txt2);font-size:13.5px}
+
+.step{margin-bottom:26px}
+.step-head{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.step-num{width:25px;height:25px;border-radius:50%;flex:0 0 auto;
+  background:var(--surf3);color:var(--gold);font-family:var(--cond);font-weight:700;
+  font-size:15px;display:grid;place-items:center;border:1px solid var(--line2)}
+.step-head h2{font-family:var(--cond);font-weight:600;font-size:21px;letter-spacing:.3px;
+  margin:0;text-transform:uppercase}
+.step.locked{opacity:.4;pointer-events:none;filter:saturate(.4)}
+
+.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:6px;flex:1 1 200px;min-width:170px}
+.field label{font-size:12px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px}
+select,input[type=date]{appearance:none;background:var(--surf2);border:1px solid var(--line2);
+  color:var(--txt);border-radius:10px;padding:11px 13px;font-family:var(--sans);font-size:14.5px;
+  width:100%;transition:border-color .15s,box-shadow .15s}
+select:focus,input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(19,197,107,.16)}
+select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a1b4' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+
+.btn{font-family:var(--sans);font-weight:600;font-size:14.5px;border:none;cursor:pointer;
+  border-radius:10px;padding:11px 18px;transition:transform .08s,filter .15s,background .15s;
+  display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--green);color:#04130b}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-ghost{background:var(--surf3);color:var(--txt);border:1px solid var(--line2)}
+.btn-ghost:hover{background:var(--surf2)}
+.btn-gold{background:var(--gold);color:#241c02}
+.btn-gold:hover{filter:brightness(1.07)}
+.btn svg{width:17px;height:17px}
+
+/* lista de jogos */
+.matches{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.match{background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:14px 15px;
+  cursor:pointer;transition:border-color .15s,transform .1s,background .15s;position:relative}
+.match:hover{border-color:var(--line2);background:var(--surf2)}
+.match.sel{border-color:var(--green);box-shadow:0 0 0 2px rgba(19,197,107,.22)}
+.match-meta{font-size:11.5px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;
+  margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.match-meta .live{color:#fff;background:var(--red);padding:2px 7px;border-radius:5px;font-weight:700;
+  animation:pulse 1.6s infinite}
+.match-meta .done{color:var(--txt2)}
+@keyframes pulse{50%{opacity:.55}}
+.match-team{display:flex;align-items:center;gap:10px;padding:3px 0}
+.match-team img{width:26px;height:26px;object-fit:contain;flex:0 0 auto}
+.match-team .tn{flex:1;font-weight:500;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.match-team .sc{font-family:var(--cond);font-weight:700;font-size:21px;min-width:22px;text-align:right}
+.empty{color:var(--txt2);text-align:center;padding:30px;font-size:14px}
+.empty.err{color:var(--red)}
+
+/* personalização */
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
+.opt label{display:block;font-size:12px;font-weight:600;color:var(--txt2);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.seg{display:flex;background:var(--surf2);border:1px solid var(--line2);border-radius:9px;padding:3px;gap:3px}
+.seg button{flex:1;background:transparent;border:none;color:var(--txt2);font-family:var(--sans);
+  font-size:13px;font-weight:600;padding:7px 4px;border-radius:6px;cursor:pointer;transition:.12s}
+.seg button.on{background:var(--green);color:#04130b}
+.seg.grid3{flex-wrap:wrap}.seg.grid3 button{flex:1 1 30%}
+.toggles{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+.tg{display:flex;align-items:center;gap:9px;background:var(--surf2);border:1px solid var(--line2);
+  border-radius:9px;padding:9px 13px;cursor:pointer;user-select:none;font-size:13.5px;font-weight:500}
+.tg input{display:none}
+.tg .dot{width:34px;height:19px;border-radius:99px;background:var(--surf3);position:relative;transition:.18s;flex:0 0 auto}
+.tg .dot::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;
+  background:var(--txt2);transition:.18s}
+.tg input:checked + .dot{background:var(--green)}
+.tg input:checked + .dot::after{background:#04130b;transform:translateX(15px)}
+
+/* preview */
+.preview-head{display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px;gap:12px;flex-wrap:wrap}
+.preview-head h3{font-family:var(--cond);font-weight:600;font-size:17px;text-transform:uppercase;
+  letter-spacing:.4px;margin:0;color:var(--txt2)}
+.bg-pick{display:flex;gap:6px}
+.bg-pick button{width:30px;height:24px;border-radius:6px;border:1px solid var(--line2);cursor:pointer;padding:0}
+.bg-pick button.on{outline:2px solid var(--green);outline-offset:1px}
+.bg-checker{background:
+  linear-gradient(45deg,#3a4452 25%,transparent 25%),linear-gradient(-45deg,#3a4452 25%,transparent 25%),
+  linear-gradient(45deg,transparent 75%,#3a4452 75%),linear-gradient(-45deg,transparent 75%,#3a4452 75%);
+  background-size:14px 14px;background-position:0 0,0 7px,7px -7px,-7px 0px;background-color:#2b333f}
+.bg-pitch{background:linear-gradient(150deg,#1f6b3a,#15532c)}
+.bg-studio{background:linear-gradient(150deg,#1a2030,#0c1018)}
+.preview-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;
+  border:1px solid var(--line)}
+.preview-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:none;background:transparent}
+
+/* barra de testes (config) */
+.debug-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;
+  background:var(--surf2);border:1px solid var(--line2);border-radius:11px;padding:11px 13px}
+.debug-bar .db-label{font-size:12px;font-weight:600;color:var(--txt2);text-transform:uppercase;
+  letter-spacing:.5px;margin-right:2px}
+.btn-mini{font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;
+  background:var(--surf3);border:1px solid var(--line2);color:var(--txt);
+  border-radius:8px;padding:8px 12px;transition:.12s}
+.btn-mini:hover{background:var(--line);border-color:var(--green)}
+.btn-mini:active{transform:translateY(1px)}
+
+/* link gerado */
+.link-box{margin-top:22px;background:var(--surf2);border:1px solid var(--line2);border-radius:12px;padding:16px}
+.link-box .lbl{font-size:12px;font-weight:600;color:var(--gold);text-transform:uppercase;
+  letter-spacing:.6px;margin-bottom:9px}
+.link-row{display:flex;gap:10px;flex-wrap:wrap}
+.link-row input{flex:1 1 320px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
+  background:var(--bg);border:1px solid var(--line2);color:var(--green);border-radius:9px;padding:11px 13px}
+.note{font-size:12.5px;color:var(--txt3);margin-top:14px;line-height:1.65}
+.note b{color:var(--txt2);font-weight:600}
+.note code{background:var(--surf3);padding:1px 6px;border-radius:5px;font-size:12px;color:var(--gold)}
+
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--green);color:#04130b;font-weight:600;padding:11px 20px;border-radius:10px;
+  opacity:0;pointer-events:none;transition:.25s;font-size:14px;z-index:50;box-shadow:0 10px 30px -8px rgba(0,0,0,.6)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.spinner{width:17px;height:17px;border:2.5px solid rgba(255,255,255,.25);border-top-color:#fff;
+  border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* =============================  OVERLAY  ============================== */
+.ov-stage{position:fixed;inset:0;pointer-events:none}
+.scorebug{position:absolute;display:flex;flex-direction:column;font-family:var(--cond);
+  background:rgba(13,17,23,.93);border:1px solid rgba(255,255,255,.10);border-radius:13px;
+  overflow:hidden;box-shadow:0 14px 40px -10px rgba(0,0,0,.65);
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);transform-origin:top left}
+.scorebug.theme-light{background:rgba(248,250,252,.95);border-color:rgba(0,0,0,.08);color:#0c1018}
+.scorebug.theme-light .sep{color:#9aa6b4}
+.scorebug.theme-light .ov-name{color:#0c1018}
+
+/* faixa do tempo/status — fica no topo, centralizada sobre o placar */
+.ov-status{font-family:var(--cond);font-size:14px;font-weight:600;letter-spacing:1.2px;
+  color:var(--gold);text-transform:uppercase;line-height:1;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:7px 14px 4px;background:rgba(0,0,0,.18)}
+.ov-status:empty{display:none}
+.scorebug.no-clock .ov-status{display:none}
+.scorebug.theme-light .ov-status{background:rgba(0,0,0,.05)}
+.ov-status .livedot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:pulse 1.4s infinite}
+
+/* linha principal — nomes, logos e placar todos na mesma linha e alinhados */
+.ov-main{display:flex;align-items:stretch}
+
+/* lados dos times */
+.ov-side{display:flex;align-items:center;gap:11px;padding:10px 17px;position:relative}
+.ov-side.home{flex-direction:row}
+.ov-side.away{flex-direction:row-reverse}
+.ov-bar{position:absolute;top:0;bottom:0;width:5px}
+.ov-side.home .ov-bar{left:0}
+.ov-side.away .ov-bar{right:0}
+.ov-logo{width:34px;height:34px;object-fit:contain;flex:0 0 auto;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+.ov-name{font-weight:600;font-size:25px;letter-spacing:.6px;color:#fff;text-transform:uppercase;
+  white-space:nowrap;max-width:230px;overflow:hidden;text-overflow:ellipsis;line-height:1}
+
+/* centro: apenas o placar, centralizado junto com os nomes */
+.ov-center{display:flex;align-items:center;justify-content:center;gap:12px;
+  padding:0 16px;background:rgba(0,0,0,.22);min-width:78px;align-self:stretch}
+.scorebug.theme-light .ov-center{background:rgba(0,0,0,.05)}
+.ov-score{font-weight:700;font-size:38px;line-height:1;color:#fff;min-width:26px;text-align:center;
+  font-variant-numeric:tabular-nums}
+.scorebug.theme-light .ov-score{color:#0c1018}
+.ov-score.flash{animation:scoreflash 1s ease}
+@keyframes scoreflash{0%,100%{color:#fff}30%{color:var(--gold);transform:scale(1.18)}}
+.sep{font-weight:600;font-size:26px;color:#5f6c7e;line-height:1}
+
+/* tamanhos */
+.scorebug.size-sm{transform:scale(.82)}
+.scorebug.size-lg{transform:scale(1.22)}
+
+/* posições */
+.pos-tl{top:34px;left:40px}
+.pos-tc{top:34px;left:50%;transform-origin:top center}
+.pos-tr{top:34px;right:40px;transform-origin:top right}
+.pos-bl{bottom:46px;left:40px;transform-origin:bottom left}
+.pos-bc{bottom:46px;left:50%;transform-origin:bottom center}
+.pos-br{bottom:46px;right:40px;transform-origin:bottom right}
+.pos-tc.size-sm,.pos-bc.size-sm{transform:translateX(-50%) scale(.82)}
+.pos-tc.size-md,.pos-bc.size-md{transform:translateX(-50%)}
+.pos-tc.size-lg,.pos-bc.size-lg{transform:translateX(-50%) scale(1.22)}
+
+/* card de alerta (gol / substituição) */
+.ov-alert{position:absolute;left:50%;transform:translateX(-50%) translateY(28px);
+  bottom:140px;min-width:330px;max-width:560px;font-family:var(--cond);
+  background:rgba(13,17,23,.96);border:1px solid rgba(255,255,255,.12);border-radius:14px;
+  box-shadow:0 18px 50px -12px rgba(0,0,0,.7);backdrop-filter:blur(8px);overflow:hidden;
+  opacity:0;transition:opacity .35s,transform .35s}
+.ov-alert.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.ov-alert .strip{height:5px}
+.ov-alert .body{display:flex;align-items:center;gap:15px;padding:15px 20px}
+.ov-alert .a-logo{width:42px;height:42px;object-fit:contain;flex:0 0 auto}
+.ov-alert .a-txt{flex:1;min-width:0}
+.ov-alert .a-kind{font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px}
+.ov-alert.goal .a-kind{color:var(--gold)}
+.ov-alert.sub .a-kind{color:var(--green)}
+.ov-alert .a-min{font-size:13px;color:var(--txt2);letter-spacing:1px;font-weight:600}
+.ov-alert .a-main{font-size:26px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.5px;
+  line-height:1.05;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-alert .a-sub{font-size:16px;font-weight:500;margin-top:2px;display:flex;align-items:center;gap:7px;
+  color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-alert .in{color:var(--green);font-weight:600}
+.ov-alert .out{color:var(--red);font-weight:600}
+.ov-alert .arrow{font-size:18px}
+
+/* painel de debug do overlay (só com ?debug=1) */
+.ov-debug{position:fixed;top:12px;left:12px;z-index:60;pointer-events:auto;
+  font-family:var(--sans);background:rgba(10,14,20,.92);border:1px solid rgba(255,255,255,.15);
+  border-radius:11px;padding:11px;box-shadow:0 10px 30px -8px rgba(0,0,0,.7);
+  display:flex;flex-direction:column;gap:7px;max-width:230px}
+.ov-debug .dh{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:#f4c84a;display:flex;align-items:center;gap:6px}
+.ov-debug .dh .x{margin-left:auto;cursor:pointer;color:#94a1b4;font-size:15px;line-height:1}
+.ov-debug .drow{display:flex;gap:6px}
+.ov-debug button.db{flex:1;font-size:12px;font-weight:600;cursor:pointer;color:#e9eef4;
+  background:#222c3b;border:1px solid #374256;border-radius:7px;padding:7px 6px;transition:.12s}
+.ov-debug button.db:hover{background:#2a3340}
+.ov-debug button.db.goal:hover{border-color:#f4c84a}
+.ov-debug button.db.sub:hover{border-color:#13c56b}
+.ov-debug .dnote{font-size:10.5px;color:#5f6c7e;line-height:1.4}
+
+.ov-loading{position:absolute;bottom:46px;left:50%;transform:translateX(-50%);
+  font-family:var(--sans);font-size:13px;color:rgba(255,255,255,.7);
+  background:rgba(13,17,23,.85);padding:8px 16px;border-radius:8px}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001s !important}
+  .ov-alert{transition:opacity .2s}
+}
+</style>
+</head>
+<body>
+
+<!-- ===========================  CONFIG  ============================ -->
+<div class="wrap" id="config" style="display:none">
+  <div class="masthead">
+    <div class="crest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="m12 7 3.5 2.5-1.3 4.1h-4.4L8.5 9.5 12 7z"/>
+        <path d="M12 2v5M2.5 8.5 8.5 9.5M21.5 8.5 15.5 9.5M5 20l4.8-6M19 20l-4.8-6"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Placar OBS — Copa do Mundo</h1>
+      <p>Escolha o jogo, ajuste o visual e gere o link do overlay. Placar e substituições ao vivo via ESPN.</p>
+    </div>
+  </div>
+
+  <!-- passo 1 -->
+  <div class="step" id="s1">
+    <div class="step-head"><div class="step-num">1</div><h2>Escolha a competição e a data</h2></div>
+    <div class="card">
+      <div class="row">
+        <div class="field">
+          <label for="league">Competição</label>
+          <select id="league">
+            <option value="fifa.world" selected>Copa do Mundo</option>
+            <option value="fifa.wwc">Copa do Mundo Feminina</option>
+            <option value="fifa.world.u20">Mundial Sub-20</option>
+            <option value="fifa.world.u17">Mundial Sub-17</option>
+            <option value="fifa.cwc">Mundial de Clubes</option>
+            <option value="fifa.friendly">Amistosos Internacionais</option>
+            <option value="uefa.euro">Eurocopa</option>
+            <option value="conmebol.america">Copa América</option>
+            <option value="uefa.champions">Champions League</option>
+            <option value="conmebol.libertadores">Libertadores</option>
+            <option value="bra.1">Brasileirão Série A</option>
+            <option value="eng.1">Premier League</option>
+            <option value="esp.1">La Liga</option>
+            <option value="ita.1">Serie A (ITA)</option>
+            <option value="ger.1">Bundesliga</option>
+            <option value="fra.1">Ligue 1</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0 1 180px">
+          <label for="date">Data dos jogos</label>
+          <input type="date" id="date">
+        </div>
+        <div class="field" style="flex:0 0 auto">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" id="loadBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            Buscar jogos
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- passo 2 -->
+  <div class="step locked" id="s2">
+    <div class="step-head"><div class="step-num">2</div><h2>Selecione o jogo</h2></div>
+    <div id="matches" class="matches"></div>
+  </div>
+
+  <!-- passo 3 -->
+  <div class="step locked" id="s3">
+    <div class="step-head"><div class="step-num">3</div><h2>Ajuste o visual e copie o link</h2></div>
+    <div class="card">
+      <div class="opts">
+        <div class="opt">
+          <label>Posição na tela</label>
+          <div class="seg grid3" id="optPos" data-key="pos">
+            <button data-v="tl">Sup. esq.</button><button data-v="tc">Sup. centro</button><button data-v="tr">Sup. dir.</button>
+            <button data-v="bl">Inf. esq.</button><button data-v="bc" class="on">Inf. centro</button><button data-v="br">Inf. dir.</button>
+          </div>
+        </div>
+        <div class="opt">
+          <label>Tamanho</label>
+          <div class="seg" id="optSize" data-key="size">
+            <button data-v="sm">Pequeno</button><button data-v="md" class="on">Médio</button><button data-v="lg">Grande</button>
+          </div>
+        </div>
+        <div class="opt">
+          <label>Tema</label>
+          <div class="seg" id="optTheme" data-key="theme">
+            <button data-v="dark" class="on">Escuro</button><button data-v="light">Claro</button>
+          </div>
+        </div>
+        <div class="opt">
+          <label>Nome dos times</label>
+          <div class="seg" id="optNames" data-key="names">
+            <button data-v="abbr">Sigla</button><button data-v="full" class="on">Completo</button>
+          </div>
+        </div>
+      </div>
+      <div class="toggles" style="margin-top:18px">
+        <label class="tg"><input type="checkbox" id="tgClock" checked><span class="dot"></span>Mostrar tempo de jogo</label>
+        <label class="tg"><input type="checkbox" id="tgGoals" checked><span class="dot"></span>Avisos de gol</label>
+        <label class="tg"><input type="checkbox" id="tgSubs" checked><span class="dot"></span>Avisos de substituição</label>
+        <label class="tg"><input type="checkbox" id="tgCards" checked><span class="dot"></span>Avisos de cartão</label>
+      </div>
+
+      <div class="preview-head">
+        <h3>Pré-visualização</h3>
+        <div class="bg-pick" id="bgPick">
+          <button class="bg-checker on" data-bg="checker" title="Transparência"></button>
+          <button class="bg-pitch" data-bg="pitch" title="Gramado"></button>
+          <button class="bg-studio" data-bg="studio" title="Estúdio"></button>
+        </div>
+      </div>
+      <div class="preview-frame bg-checker" id="previewFrame">
+        <iframe id="previewIframe" title="Pré-visualização do overlay"></iframe>
+      </div>
+
+      <div class="debug-bar" id="debugBar">
+        <span class="db-label">Testar avisos:</span>
+        <button class="btn-mini" data-test="goal" data-side="home">⚽ Gol mand.</button>
+        <button class="btn-mini" data-test="goal" data-side="away">⚽ Gol vis.</button>
+        <button class="btn-mini" data-test="bump" data-side="home">+1 mand.</button>
+        <button class="btn-mini" data-test="bump" data-side="away">+1 vis.</button>
+        <button class="btn-mini" data-test="sub" data-side="home">⇄ Subst. mand.</button>
+        <button class="btn-mini" data-test="sub" data-side="away">⇄ Subst. vis.</button>
+        <button class="btn-mini" data-test="yellow" data-side="home">🟨 Amarelo mand.</button>
+        <button class="btn-mini" data-test="yellow" data-side="away">🟨 Amarelo vis.</button>
+        <button class="btn-mini" data-test="red" data-side="home">🟥 Vermelho mand.</button>
+        <button class="btn-mini" data-test="red" data-side="away">🟥 Vermelho vis.</button>
+      </div>
+
+      <div class="link-box">
+        <div class="lbl">Link do overlay (use no OBS)</div>
+        <div class="link-row">
+          <input type="text" id="linkOut" readonly>
+          <button class="btn btn-gold" id="copyBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copiar
+          </button>
+          <button class="btn btn-ghost" id="openBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+            Abrir
+          </button>
+          <button class="btn btn-ghost" id="openTestBtn" title="Abre o overlay com botões de teste na tela">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8 7 17M17 7l2.8-2.8"/></svg>
+            Modo teste
+          </button>
+        </div>
+        <div class="note">
+          <b>Como usar no OBS:</b> adicione uma fonte do tipo <code>Navegador</code> (Browser),
+          cole o link acima, defina <code>Largura 1920</code> e <code>Altura 1080</code> e marque
+          “Atualizar o navegador quando a cena ficar ativa”. O fundo é transparente automaticamente.<br>
+          <b>Testar avisos:</b> use os botões acima para ver como ficam os avisos de gol e substituição
+          direto na pré-visualização. O botão <code>Modo teste</code> abre o overlay com esses botões na
+          própria tela (útil para ajustar a posição no OBS). O link normal do OBS <b>não</b> mostra os
+          botões de teste.<br>
+          <b>Importante:</b> o link só funcionará no OBS depois que você <b>hospedar este arquivo</b> num site
+          (ex.: GitHub Pages, Netlify, Vercel). Abrindo direto do seu computador (<code>file://</code>) ele só
+          roda na sua máquina. O placar atualiza sozinho a cada poucos segundos.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===========================  OVERLAY  =========================== -->
+<div class="ov-stage" id="overlay" style="display:none">
+  <div class="ov-loading" id="ovLoading">Conectando ao placar…</div>
+  <div class="scorebug" id="bug" style="display:none">
+    <div class="ov-status" id="ovStatus"></div>
+    <div class="ov-main">
+      <div class="ov-side home">
+        <span class="ov-bar" id="hBar"></span>
+        <img class="ov-logo" id="hLogo" alt="">
+        <span class="ov-name" id="hName">—</span>
+      </div>
+      <div class="ov-center">
+        <span class="ov-score" id="hScore">0</span>
+        <span class="sep">-</span>
+        <span class="ov-score" id="aScore">0</span>
+      </div>
+      <div class="ov-side away">
+        <span class="ov-bar" id="aBar"></span>
+        <img class="ov-logo" id="aLogo" alt="">
+        <span class="ov-name" id="aName">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="ov-alert" id="ovAlert">
+    <div class="strip" id="alStrip"></div>
+    <div class="body">
+      <img class="a-logo" id="alLogo" alt="">
+      <div class="a-txt">
+        <div class="a-kind"><span id="alKind">GOL</span><span class="a-min" id="alMin"></span></div>
+        <div class="a-main" id="alMain"></div>
+        <div class="a-sub" id="alSub"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   CONFIG GERAL
+   ========================================================================= */
+const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer";
+const params = new URLSearchParams(location.search);
+const isOverlay = params.has("event") && params.has("league");
+
+/* nomes amigáveis dos status da ESPN */
+const STATUS_PT = {
+  "STATUS_SCHEDULED":"", "STATUS_IN_PROGRESS":"", "STATUS_HALFTIME":"INTERVALO",
+  "STATUS_FULL_TIME":"ENCERRADO", "STATUS_FINAL":"ENCERRADO", "STATUS_END_PERIOD":"",
+  "STATUS_FIRST_HALF":"1º TEMPO","STATUS_SECOND_HALF":"2º TEMPO",
+  "STATUS_POSTPONED":"ADIADO","STATUS_ABANDONED":"SUSPENSO"
+};
+
+/* ---- util ---- */
+const $ = id => document.getElementById(id);
+const fixHex = c => { if(!c) return "#13c56b"; return c[0]==="#"?c:"#"+c; };
+const esc = s => String(s==null?"":s);
+
+async function api(path){
+  const r = await fetch(`${ESPN}/${path}`,{cache:"no-store"});
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+
+/* ===========================================================================
+   MODO OVERLAY
+   =========================================================================== */
+if(isOverlay){
+  document.documentElement.classList.add("mode-overlay");
+  $("overlay").style.display = "block";
+  runOverlay();
+} else {
+  $("config").style.display = "block";
+  runConfig();
+}
+
+/* --------------------------- OVERLAY --------------------------------- */
+function runOverlay(){
+  const league = params.get("league");
+  const event  = params.get("event");
+  const date   = params.get("date") || "";
+  const opt = {
+    pos:   params.get("pos")   || "bc",
+    size:  params.get("size")  || "md",
+    theme: params.get("theme") || "dark",
+    names: params.get("names") || "full",
+    clock: params.get("clock") !== "0",
+    goals: params.get("goals") !== "0",
+    subs:  params.get("subs")  !== "0",
+    cards: params.get("cards") !== "0",
+  };
+
+  const bug = $("bug");
+  bug.classList.add("pos-"+opt.pos,"size-"+opt.size,"theme-"+opt.theme);
+  if(!opt.clock) bug.classList.add("no-clock");
+
+  let teams = {};            // id -> {name, abbr, logo, color, homeAway}
+  let homeId=null, awayId=null;
+  let lastH=null, lastA=null;
+  const seen = new Set();    // ids de eventos já exibidos
+  let primed = false;        // evita animar histórico na 1ª carga
+  const queue = [];          // fila de alertas
+  let showingAlert = false;
+
+  function teamName(t){ return opt.names==="abbr" ? (t.abbr||t.name) : (t.name||t.abbr); }
+
+  function paintStatic(){
+    const h=teams[homeId], a=teams[awayId];
+    if(!h||!a) return;
+    $("hName").textContent = teamName(h);
+    $("aName").textContent = teamName(a);
+    if(h.logo){ $("hLogo").src=h.logo; } else $("hLogo").style.display="none";
+    if(a.logo){ $("aLogo").src=a.logo; } else $("aLogo").style.display="none";
+    $("hBar").style.background = fixHex(h.color);
+    $("aBar").style.background = fixHex(a.color);
+  }
+
+  /* cronômetro do jogo: mostra o minuto correndo (ex 67'), sincronizando
+     com o relógio oficial da ESPN a cada atualização. Respeita intervalo
+     e acréscimos (45'+2', 90'+3') usando sempre o valor oficial nesses casos. */
+  const matchClock = (function(){
+    let baseSec=0, baseAt=0, official="", running=false, timer=null;
+    function render(){
+      const el=$("ovStatus");
+      let txt, official_t=(official||"").trim();
+      const hasExtra = /\+/.test(official_t);                 // acréscimos
+      const isPlainMin = /^\d{1,3}'?$/.test(official_t);      // só "67'"
+      if(hasExtra || (!isPlainMin && official_t)){
+        txt = official_t.replace(/'+$/,"") + "'";             // usa o oficial
+      } else {
+        const elapsed = baseSec + (performance.now()-baseAt)/1000;
+        txt = Math.max(0,Math.floor(elapsed/60)) + "'";       // minuto correndo
+      }
+      el.innerHTML = `<span class="livedot"></span>${txt}`;
+    }
+    function loop(){ if(!running) return; render(); timer=setTimeout(loop,1000); }
+    return {
+      sync(st){
+        official = st.displayClock || "";
+        const secs = Number(st.clock);
+        if(!isNaN(secs) && secs>0){ baseSec=secs; }
+        else { const mm=parseInt((official.match(/\d+/)||[0])[0],10)||0; baseSec=mm*60; }
+        baseAt = performance.now();
+        if(!running){ running=true; loop(); } else render();
+      },
+      stop(){ running=false; if(timer) clearTimeout(timer); }
+    };
+  })();
+
+  function paintStatus(st){
+    const el=$("ovStatus");
+    const state = st?.type?.state, name = st?.type?.name;
+    if(!opt.clock){ el.innerHTML=""; matchClock.stop(); return; }
+    if(state==="in"){
+      if(name==="STATUS_HALFTIME"){ matchClock.stop(); el.innerHTML=`<span class="livedot"></span>INTERVALO`; return; }
+      matchClock.sync(st);                 // mostra o minuto correndo
+    } else if(state==="post"){
+      matchClock.stop(); el.textContent = STATUS_PT[name] || "ENCERRADO";
+    } else { // pre
+      matchClock.stop(); el.textContent = (st?.type?.shortDetail || "EM BREVE").toUpperCase();
+    }
+  }
+
+  function setScore(h,a,state){
+    const hs=$("hScore"), as=$("aScore");
+    if(lastH!==null && h!==lastH){ hs.classList.remove("flash"); void hs.offsetWidth; hs.classList.add("flash");
+      if(opt.goals && primed && state==="in") queueGoalByScore(homeId); }
+    if(lastA!==null && a!==lastA){ as.classList.remove("flash"); void as.offsetWidth; as.classList.add("flash");
+      if(opt.goals && primed && state==="in") queueGoalByScore(awayId); }
+    hs.textContent=h; as.textContent=a;
+    lastH=h; lastA=a;
+  }
+
+  /* fila de alertas ------------------------------------------------- */
+  function enqueue(a){ queue.push(a); if(!showingAlert) nextAlert(); }
+  function nextAlert(){
+    if(!queue.length){ showingAlert=false; return; }
+    showingAlert=true;
+    const a=queue.shift();
+    const box=$("ovAlert");
+    box.className = "ov-alert "+a.kind;
+    $("alStrip").style.background = a.color || "var(--gold)";
+    if(a.logo){ $("alLogo").src=a.logo; $("alLogo").style.display=""; } else $("alLogo").style.display="none";
+    $("alKind").textContent = a.label;
+    $("alKind").style.color = a.labelColor || "";
+    $("alMin").textContent = a.min ? "· "+a.min : "";
+    $("alMain").textContent = a.main || "";
+    $("alSub").innerHTML = a.subHtml || "";
+    requestAnimationFrame(()=>box.classList.add("show"));
+    setTimeout(()=>{
+      box.classList.remove("show");
+      setTimeout(nextAlert, 450);
+    }, 6200);
+  }
+
+  function queueGoalByScore(teamId){
+    const t=teams[teamId]; if(!t) return;
+    enqueue({kind:"goal",label:"⚽ GOL",color:fixHex(t.color),logo:t.logo,
+      main:t.name, subHtml:"", min:""});
+  }
+
+  /* ---- TESTE / DEBUG: dispara avisos manualmente -------------------- */
+  function currentMin(){
+    const s=($("ovStatus").textContent||"").trim();
+    const m=s.match(/\d+'(?:\+\d+')?/);
+    return m ? m[0] : "TESTE";
+  }
+  function teamOf(side){
+    const tid = side==="away" ? awayId : homeId;
+    return teams[tid] || {name:(side==="away"?"VISITANTE":"MANDANTE"),color:"#13c56b",logo:""};
+  }
+  function fireTest(kind, side){
+    side = side==="away" ? "away" : "home";
+    const t = teamOf(side);
+    const min = currentMin();
+    if(kind==="sub"){
+      enqueue({kind:"sub",label:"⇄ SUBSTITUIÇÃO",color:fixHex(t.color),logo:t.logo,
+        min, main:t.name||"",
+        subHtml:`<span class="arrow in">▲</span><span class="in">Jogador que entra</span>`+
+                `&nbsp;&nbsp;<span class="arrow out">▼</span><span class="out">Jogador que sai</span>`});
+    } else if(kind==="yellow" || kind==="red"){
+      const red = kind==="red";
+      enqueue({kind:"card",color: red?"#ef4d56":"#f4c84a",labelColor: red?"#ef4d56":"#f4c84a",
+        logo:t.logo, min, label: red?"🟥 CARTÃO VERMELHO":"🟨 CARTÃO AMARELO",
+        main:t.name||"", subHtml:"Jogador advertido (teste)"});
+    } else { // goal (só o aviso, sem mexer no número)
+      const el = side==="away" ? $("aScore") : $("hScore");
+      el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+      enqueue({kind:"goal",label:"⚽ GOL",color:fixHex(t.color),logo:t.logo,
+        min, main:t.name||"", subHtml:"Marcador (teste)"});
+    }
+  }
+  // incrementa o placar de verdade (dispara o efeito do número mudando + aviso de gol)
+  function bumpScore(side){
+    let h=parseInt($("hScore").textContent,10)||0;
+    let a=parseInt($("aScore").textContent,10)||0;
+    if(side==="away") a++; else h++;
+    primed = true;
+    setScore(h,a,"in");
+  }
+  function handleDebug(kind, side){
+    if(kind==="bump") bumpScore(side); else fireTest(kind, side);
+  }
+
+  // recebe comandos de teste da pré-visualização (painel de configuração)
+  window.addEventListener("message",(e)=>{
+    const d=e.data;
+    if(d && d.source==="placar-debug" && d.kind) handleDebug(d.kind, d.side);
+  });
+
+  // painel de teste na própria tela (só com ?debug=1)
+  if(params.get("debug")==="1"){
+    const p=document.createElement("div");
+    p.className="ov-debug";
+    p.innerHTML=
+      `<div class="dh">⚙ Modo teste<span class="x" id="dbgX" title="Fechar">✕</span></div>`+
+      `<div class="drow"><button class="db goal" data-k="goal" data-s="home">⚽ Gol mand.</button>`+
+        `<button class="db goal" data-k="goal" data-s="away">⚽ Gol vis.</button></div>`+
+      `<div class="drow"><button class="db goal" data-k="bump" data-s="home">+1 mand.</button>`+
+        `<button class="db goal" data-k="bump" data-s="away">+1 vis.</button></div>`+
+      `<div class="drow"><button class="db sub" data-k="sub" data-s="home">⇄ Sub mand.</button>`+
+        `<button class="db sub" data-k="sub" data-s="away">⇄ Sub vis.</button></div>`+
+      `<div class="drow"><button class="db yel" data-k="yellow" data-s="home">🟨 Amar. mand.</button>`+
+        `<button class="db yel" data-k="yellow" data-s="away">🟨 Amar. vis.</button></div>`+
+      `<div class="drow"><button class="db red" data-k="red" data-s="home">🟥 Verm. mand.</button>`+
+        `<button class="db red" data-k="red" data-s="away">🟥 Verm. vis.</button></div>`+
+      `<div class="dnote">Estes botões não aparecem no link normal do OBS.</div>`;
+    document.body.appendChild(p);
+    p.addEventListener("click",(e)=>{
+      const b=e.target.closest("button.db");
+      if(b){ handleDebug(b.dataset.k, b.dataset.s); return; }
+      if(e.target.id==="dbgX") p.remove();
+    });
+  }
+
+  /* extrai gols e substituições do summary -------------------------- */
+  function handleKeyEvents(keyEvents){
+    if(!Array.isArray(keyEvents)) return;
+    for(const ev of keyEvents){
+      const id = ev.id || ( (ev.type?.text||"")+"_"+(ev.clock?.displayValue||"")+"_"+
+                 (ev.athletesInvolved?.[0]?.displayName||ev.text||""));
+      if(seen.has(id)) continue;
+      seen.add(id);
+      if(!primed) continue; // 1ª passada: só registra, não anima
+
+      const typeTxt = (ev.type?.text || ev.type?.name || "").toLowerCase();
+      const min = ev.clock?.displayValue || "";
+      const team = teams[ev.team?.id] || {};
+      const ath = ev.athletesInvolved || ev.participants || [];
+
+      const isGoal = ev.scoringPlay === true || typeTxt.includes("goal") || typeTxt.includes("gol");
+      const isSub  = typeTxt.includes("substitut") || typeTxt.includes("subst");
+      const isRed    = typeTxt.includes("red card") || typeTxt.includes("red") || typeTxt.includes("vermelho");
+      const isYellow = typeTxt.includes("yellow") || typeTxt.includes("amarelo");
+
+      if(isGoal && opt.goals){
+        const scorer = ath[0]?.displayName || ath[0]?.athlete?.displayName || "";
+        const pen = typeTxt.includes("penalty") ? " (pênalti)" : "";
+        const og  = typeTxt.includes("own") ? " (contra)" : "";
+        enqueue({kind:"goal",label:"⚽ GOL",color:fixHex(team.color),logo:team.logo,
+          min, main: team.name || "",
+          subHtml: scorer ? esc(scorer)+pen+og : ""});
+      } else if(isSub && opt.subs){
+        // tenta descobrir quem entra/quem sai
+        let inName="", outName="";
+        const a0 = ath[0]?.displayName || ath[0]?.athlete?.displayName || "";
+        const a1 = ath[1]?.displayName || ath[1]?.athlete?.displayName || "";
+        const txt = (ev.text||"").toLowerCase();
+        // padrão ESPN em inglês: "X replaces Y"  -> X entra, Y sai
+        const m = (ev.text||"").match(/(.+?)\s+replaces\s+(.+)/i);
+        if(m){ inName=m[1].trim(); outName=m[2].replace(/\.$/,"").trim(); }
+        else { inName=a0; outName=a1; }
+        enqueue({kind:"sub",label:"⇄ SUBSTITUIÇÃO",color:fixHex(team.color),logo:team.logo,
+          min, main: team.name || "",
+          subHtml: `<span class="arrow in">▲</span><span class="in">${esc(inName)}</span>`+
+                   (outName?`&nbsp;&nbsp;<span class="arrow out">▼</span><span class="out">${esc(outName)}</span>`:"")});
+      } else if((isRed||isYellow) && opt.cards){
+        const player = ath[0]?.displayName || ath[0]?.athlete?.displayName || "";
+        enqueue({kind:"card",color: isRed?"#ef4d56":"#f4c84a",labelColor: isRed?"#ef4d56":"#f4c84a",
+          logo:team.logo, min, label: isRed?"🟥 CARTÃO VERMELHO":"🟨 CARTÃO AMARELO",
+          main: team.name || "", subHtml: player ? esc(player) : ""});
+      }
+    }
+  }
+
+  /* ---- ciclo de atualização ---- */
+  let interval = 15000;
+  async function tick(){
+    let state="pre";
+    try{
+      // 1) placar + status + times/logos/cores (via scoreboard da data)
+      if(date){
+        const sb = await api(`${league}/scoreboard?dates=${date}`);
+        const evt = (sb.events||[]).find(e=>e.id===event);
+        if(evt){
+          const comp = evt.competitions[0];
+          const cs = comp.competitors;
+          const home = cs.find(c=>c.homeAway==="home") || cs[0];
+          const away = cs.find(c=>c.homeAway==="away") || cs[1];
+          homeId=home.team.id; awayId=away.team.id;
+          teams[homeId]={name:home.team.shortDisplayName||home.team.displayName,
+            abbr:home.team.abbreviation, logo:home.team.logo, color:home.team.color, homeAway:"home"};
+          teams[awayId]={name:away.team.shortDisplayName||away.team.displayName,
+            abbr:away.team.abbreviation, logo:away.team.logo, color:away.team.color, homeAway:"away"};
+          paintStatic();
+          const st = comp.status; state = st?.type?.state || "pre";
+          paintStatus(st);
+          setScore(parseInt(home.score||"0",10), parseInt(away.score||"0",10), state);
+          $("ovLoading").style.display="none";
+          $("bug").style.display="flex";
+        }
+      }
+      // 2) eventos (gols/subs) via summary — só quando faz sentido
+      if(state!=="pre" && (opt.goals || opt.subs)){
+        try{
+          const sum = await api(`${league}/summary?event=${event}`);
+          // alguns retornos trazem o placar mais fresco no header
+          const comp = sum.header?.competitions?.[0];
+          if(comp){
+            const st = comp.status; const cs = comp.competitors||[];
+            const home = cs.find(c=>c.homeAway==="home"); const away = cs.find(c=>c.homeAway==="away");
+            if(home&&away){
+              state = st?.type?.state || state;
+              paintStatus(st);
+              setScore(parseInt(home.score||"0",10), parseInt(away.score||"0",10), state);
+            }
+          }
+          handleKeyEvents(sum.keyEvents);
+        }catch(e){/* summary opcional */}
+      }
+      primed = true;
+    }catch(e){
+      // mantém o último estado; tenta de novo
+    }
+    // ritmo: rápido ao vivo, lento fora dele
+    interval = state==="in" ? 12000 : (state==="post" ? 60000 : 30000);
+    setTimeout(tick, interval);
+  }
+  tick();
+}
+
+/* ===========================================================================
+   MODO CONFIG
+   =========================================================================== */
+function runConfig(){
+  // data padrão = hoje (fuso local)
+  const now=new Date();
+  $("date").value = now.toISOString().slice(0,10);
+
+  const state = { sel:null, opts:{pos:"bc",size:"md",theme:"dark",names:"full",clock:true,goals:true,subs:true,cards:true} };
+
+  $("loadBtn").addEventListener("click", loadMatches);
+  $("league").addEventListener("change", loadMatches);
+
+  async function loadMatches(){
+    const league=$("league").value;
+    const date=$("date").value.replaceAll("-","");
+    const box=$("matches");
+    $("s2").classList.remove("locked");
+    box.innerHTML = `<div class="empty"><span class="spinner" style="border-top-color:var(--green)"></span>&nbsp; Buscando jogos…</div>`;
+    state.sel=null; $("s3").classList.add("locked");
+    try{
+      const data = await api(`${league}/scoreboard?dates=${date}`);
+      const evs = data.events||[];
+      if(!evs.length){ box.innerHTML=`<div class="empty">Nenhum jogo encontrado nesta data. Tente outra data ou competição.</div>`; return; }
+      box.innerHTML="";
+      evs.forEach(ev=>box.appendChild(matchCard(ev, league, date)));
+    }catch(e){
+      box.innerHTML=`<div class="empty err">Não foi possível carregar os jogos.<br>Verifique sua conexão e tente novamente.</div>`;
+    }
+  }
+
+  function matchCard(ev, league, date){
+    const comp=ev.competitions[0];
+    const cs=comp.competitors;
+    const home=cs.find(c=>c.homeAway==="home")||cs[0];
+    const away=cs.find(c=>c.homeAway==="away")||cs[1];
+    const st=comp.status, stt=st?.type?.state;
+    const d=new Date(ev.date);
+    const hora=d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+
+    let badge="";
+    if(stt==="in") badge=`<span class="live">AO VIVO ${esc(st.displayClock||"")}</span>`;
+    else if(stt==="post") badge=`<span class="done">ENCERRADO</span>`;
+    else badge=`<span>${hora}</span>`;
+
+    const showScore = stt!=="pre";
+    const card=document.createElement("div");
+    card.className="match";
+    card.innerHTML=`
+      <div class="match-meta"><span>${esc(ev.shortName||"")}</span>${badge}</div>
+      <div class="match-team">
+        <img src="${esc(home.team.logo)}" alt="" onerror="this.style.visibility='hidden'">
+        <span class="tn">${esc(home.team.shortDisplayName||home.team.displayName)}</span>
+        <span class="sc">${showScore?esc(home.score):""}</span>
+      </div>
+      <div class="match-team">
+        <img src="${esc(away.team.logo)}" alt="" onerror="this.style.visibility='hidden'">
+        <span class="tn">${esc(away.team.shortDisplayName||away.team.displayName)}</span>
+        <span class="sc">${showScore?esc(away.score):""}</span>
+      </div>`;
+    card.addEventListener("click",()=>{
+      document.querySelectorAll(".match.sel").forEach(m=>m.classList.remove("sel"));
+      card.classList.add("sel");
+      state.sel={league,event:ev.id,date};
+      $("s3").classList.remove("locked");
+      buildLink();
+      $("s3").scrollIntoView({behavior:"smooth",block:"start"});
+    });
+    return card;
+  }
+
+  /* ---- controles de opção ---- */
+  document.querySelectorAll(".seg[data-key]").forEach(seg=>{
+    seg.addEventListener("click",e=>{
+      const b=e.target.closest("button"); if(!b) return;
+      seg.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      state.opts[seg.dataset.key]=b.dataset.v;
+      buildLink();
+    });
+  });
+  ["tgClock","tgGoals","tgSubs","tgCards"].forEach(id=>{
+    $(id).addEventListener("change",()=>{
+      state.opts.clock=$("tgClock").checked;
+      state.opts.goals=$("tgGoals").checked;
+      state.opts.subs=$("tgSubs").checked;
+      state.opts.cards=$("tgCards").checked;
+      buildLink();
+    });
+  });
+
+  // fundo da pré-visualização
+  $("bgPick").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    $("bgPick").querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    const f=$("previewFrame");
+    f.className="preview-frame bg-"+b.dataset.bg;
+  });
+
+  function buildOverlayURL(){
+    if(!state.sel) return "";
+    const o=state.opts;
+    const q=new URLSearchParams({
+      league:state.sel.league, event:state.sel.event, date:state.sel.date,
+      pos:o.pos, size:o.size, theme:o.theme, names:o.names,
+      clock:o.clock?"1":"0", goals:o.goals?"1":"0", subs:o.subs?"1":"0", cards:o.cards?"1":"0"
+    });
+    return location.origin+location.pathname+"?"+q.toString();
+  }
+
+  function buildLink(){
+    const url=buildOverlayURL();
+    if(!url) return;
+    $("linkOut").value=url;
+    // pré-visualização usa caminho relativo (funciona inclusive em file://)
+    const rel="?"+url.split("?")[1];
+    $("previewIframe").src=rel;
+  }
+
+  $("copyBtn").addEventListener("click",async()=>{
+    const v=$("linkOut").value; if(!v) return;
+    try{ await navigator.clipboard.writeText(v); }
+    catch(e){ $("linkOut").select(); document.execCommand("copy"); }
+    showToast("Link copiado!");
+  });
+  $("openBtn").addEventListener("click",()=>{
+    const v=$("linkOut").value; if(v) window.open(v,"_blank");
+  });
+  $("openTestBtn").addEventListener("click",()=>{
+    const v=$("linkOut").value; if(!v) return;
+    window.open(v+"&debug=1","_blank");
+  });
+
+  // botões de teste: enviam o comando para a pré-visualização (iframe)
+  $("debugBar").addEventListener("click",(e)=>{
+    const b=e.target.closest("button[data-test]"); if(!b) return;
+    if(!state.sel){ showToast("Escolha um jogo primeiro"); return; }
+    const win=$("previewIframe").contentWindow;
+    if(!win){ return; }
+    win.postMessage({source:"placar-debug", kind:b.dataset.test, side:b.dataset.side}, "*");
+    showToast("Aviso de teste enviado");
+  });
+
+  // carrega os jogos de hoje automaticamente ao abrir
+  loadMatches();
+}
+
+function showToast(msg){
+  const t=$("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(showToast._t); showToast._t=setTimeout(()=>t.classList.remove("show"),1800);
+}
+</script>
+</body>
+</html>
