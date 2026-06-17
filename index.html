@@ -110,6 +110,20 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
   font-size:13px;font-weight:600;padding:7px 4px;border-radius:6px;cursor:pointer;transition:.12s}
 .seg button.on{background:var(--green);color:#04130b}
 .seg.grid3{flex-wrap:wrap}.seg.grid3 button{flex:1 1 30%}
+.optval{float:right;color:var(--txt3);font-weight:600;font-size:11px;letter-spacing:0;text-transform:none}
+.range{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:99px;
+  background:var(--surf3);outline:none;cursor:pointer;margin-top:6px}
+.range::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:var(--green);cursor:pointer;border:3px solid var(--surf);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.range::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--green);cursor:pointer;border:none}
+.swrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.swrow .csw{width:30px;height:26px;border-radius:7px;border:1px solid var(--line2);cursor:pointer;
+  background:var(--surf2);color:var(--txt2);font-size:10px;font-weight:700;padding:0;
+  display:flex;align-items:center;justify-content:center;transition:.12s}
+.swrow .csw:hover{border-color:var(--txt3)}
+.swrow .csw.on{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+.swrow .cpick{position:relative;overflow:hidden;font-size:13px}
+.swrow .cpick input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:none}
 .toggles{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
 .tg{display:flex;align-items:center;gap:9px;background:var(--surf2);border:1px solid var(--line2);
   border-radius:9px;padding:9px 13px;cursor:pointer;user-select:none;font-size:13.5px;font-weight:500}
@@ -171,16 +185,17 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
 /* =============================  OVERLAY  ============================== */
 .ov-stage{position:fixed;inset:0;pointer-events:none}
 .scorebug{position:absolute;display:flex;flex-direction:column;font-family:var(--cond);
-  background:rgba(13,17,23,.93);border:1px solid rgba(255,255,255,.10);border-radius:13px;
+  background:var(--bug-bg, rgba(13,17,23,.93));border:1px solid rgba(255,255,255,.10);border-radius:13px;
   overflow:hidden;box-shadow:0 14px 40px -10px rgba(0,0,0,.65);
-  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);transform-origin:top left}
-.scorebug.theme-light{background:rgba(248,250,252,.95);border-color:rgba(0,0,0,.08);color:#0c1018}
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+  transform-origin:top left;transform:translateX(var(--tx,0)) scale(var(--scale,1))}
+.scorebug.theme-light{background:var(--bug-bg, rgba(248,250,252,.95));border-color:rgba(0,0,0,.08);color:#0c1018}
 .scorebug.theme-light .sep{color:#9aa6b4}
 .scorebug.theme-light .ov-name{color:#0c1018}
 
 /* faixa do tempo/status — fica no topo, centralizada sobre o placar */
 .ov-status{font-family:var(--cond);font-size:14px;font-weight:600;letter-spacing:1.2px;
-  color:var(--gold);text-transform:uppercase;line-height:1;
+  color:var(--bug-accent, var(--gold));text-transform:uppercase;line-height:1;
   display:flex;align-items:center;justify-content:center;gap:6px;
   padding:7px 14px 4px;background:rgba(0,0,0,.18)}
 .ov-status:empty{display:none}
@@ -214,19 +229,13 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
 .sep{font-weight:600;font-size:26px;color:#5f6c7e;line-height:1}
 
 /* tamanhos */
-.scorebug.size-sm{transform:scale(.82)}
-.scorebug.size-lg{transform:scale(1.22)}
-
-/* posições */
-.pos-tl{top:34px;left:40px}
-.pos-tc{top:34px;left:50%;transform-origin:top center}
-.pos-tr{top:34px;right:40px;transform-origin:top right}
-.pos-bl{bottom:46px;left:40px;transform-origin:bottom left}
-.pos-bc{bottom:46px;left:50%;transform-origin:bottom center}
-.pos-br{bottom:46px;right:40px;transform-origin:bottom right}
-.pos-tc.size-sm,.pos-bc.size-sm{transform:translateX(-50%) scale(.82)}
-.pos-tc.size-md,.pos-bc.size-md{transform:translateX(-50%)}
-.pos-tc.size-lg,.pos-bc.size-lg{transform:translateX(-50%) scale(1.22)}
+/* posições (--tx define o ajuste horizontal; a escala vem de --scale) */
+.pos-tl{top:34px;left:40px;--tx:0;transform-origin:top left}
+.pos-tc{top:34px;left:50%;--tx:-50%;transform-origin:top center}
+.pos-tr{top:34px;right:40px;--tx:0;transform-origin:top right}
+.pos-bl{bottom:46px;left:40px;--tx:0;transform-origin:bottom left}
+.pos-bc{bottom:46px;left:50%;--tx:-50%;transform-origin:bottom center}
+.pos-br{bottom:46px;right:40px;--tx:0;transform-origin:bottom right}
 
 /* card de alerta (gol / substituição / cartão) — posição definida via JS */
 .ov-alert{position:absolute;--ax:-50%;--ay:10px;--accent:var(--gold);
@@ -293,6 +302,15 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
 .ov-ctrl .creset{margin-top:8px;font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;
   color:#94a1b4;background:transparent;border:1px solid #374256;border-radius:7px;padding:7px;transition:.12s}
 .ov-ctrl .creset:hover{color:#e9eef4;border-color:#5f6c7e}
+.ov-ctrl .clabel span{color:#94a1b4;font-weight:600;letter-spacing:0;text-transform:none;margin-left:4px}
+.ov-ctrl .swrow{display:flex;gap:5px;flex-wrap:wrap}
+.ov-ctrl .csw{width:30px;height:25px;flex:0 0 auto;border-radius:6px;border:1px solid #374256;cursor:pointer;
+  font-size:9px;font-weight:700;color:#cdd6e2;background:#1b2330;padding:0;
+  display:flex;align-items:center;justify-content:center;transition:.12s}
+.ov-ctrl .csw.on{outline:2px solid #13c56b;outline-offset:1px;border-color:#13c56b}
+.ov-ctrl .cstep{flex:1;font-family:var(--sans);font-size:12.5px;font-weight:700;cursor:pointer;color:#e9eef4;
+  background:#222c3b;border:1px solid #374256;border-radius:7px;padding:7px 4px;transition:.12s}
+.ov-ctrl .cstep:hover{background:#2a3340}
 .ov-ctrl .dnote{font-size:10.5px;color:#5f6c7e;line-height:1.5;margin-top:6px}
 .ov-ctrl .dnote b{color:#94a1b4}
 /* cantinho invisível para abrir o painel só com o mouse (no "Interagir" do OBS) */
@@ -386,10 +404,8 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
           </div>
         </div>
         <div class="opt">
-          <label>Tamanho</label>
-          <div class="seg" id="optSize" data-key="size">
-            <button data-v="sm">Pequeno</button><button data-v="md" class="on">Médio</button><button data-v="lg">Grande</button>
-          </div>
+          <label>Escala <span class="optval" id="scaleVal">100%</span></label>
+          <input type="range" id="optScale" min="50" max="220" step="5" value="100" class="range">
         </div>
         <div class="opt">
           <label>Tema</label>
@@ -407,6 +423,36 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
           <label>Estilo do aviso</label>
           <div class="seg" id="optAlert" data-key="alert">
             <button data-v="full" class="on">Completo</button><button data-v="min">Minimalista</button>
+          </div>
+        </div>
+        <div class="opt">
+          <label>Cor de fundo</label>
+          <div class="swrow" id="optBg">
+            <button class="csw on" data-v="auto">Auto</button>
+            <button class="csw" data-v="#000000" style="background:#000000"></button>
+            <button class="csw" data-v="#11161f" style="background:#11161f"></button>
+            <button class="csw" data-v="#0a1838" style="background:#0a1838"></button>
+            <button class="csw" data-v="#0b2a16" style="background:#0b2a16"></button>
+            <button class="csw" data-v="#2a0a12" style="background:#2a0a12"></button>
+            <button class="csw" data-v="#ffffff" style="background:#ffffff"></button>
+            <label class="csw cpick" title="Cor personalizada">🎨<input type="color" id="bgPicker" value="#0d1117"></label>
+          </div>
+        </div>
+        <div class="opt">
+          <label>Opacidade do fundo <span class="optval" id="bgopVal">92%</span></label>
+          <input type="range" id="optBgop" min="0" max="100" step="1" value="92" class="range">
+        </div>
+        <div class="opt">
+          <label>Cor de destaque</label>
+          <div class="swrow" id="optAccent">
+            <button class="csw on" data-v="auto">Auto</button>
+            <button class="csw" data-v="#f4c84a" style="background:#f4c84a"></button>
+            <button class="csw" data-v="#13c56b" style="background:#13c56b"></button>
+            <button class="csw" data-v="#ffffff" style="background:#ffffff"></button>
+            <button class="csw" data-v="#29e0e0" style="background:#29e0e0"></button>
+            <button class="csw" data-v="#ef4d56" style="background:#ef4d56"></button>
+            <button class="csw" data-v="#3b82f6" style="background:#3b82f6"></button>
+            <label class="csw cpick" title="Cor personalizada">🎨<input type="color" id="accentPicker" value="#f4c84a"></label>
           </div>
         </div>
       </div>
@@ -537,6 +583,14 @@ const STATUS_PT = {
 /* ---- util ---- */
 const $ = id => document.getElementById(id);
 const fixHex = c => { if(!c) return "#13c56b"; return c[0]==="#"?c:"#"+c; };
+function rgbaHex(hex, opPct){
+  let h=String(hex||"").replace("#","");
+  if(h.length===3) h=h.split("").map(c=>c+c).join("");
+  if(h.length!==6 || /[^0-9a-fA-F]/.test(h)) return undefined;
+  const r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
+  const a=Math.max(0,Math.min(100, opPct==null?100:Number(opPct)))/100;
+  return `rgba(${r},${g},${b},${a})`;
+}
 const esc = s => String(s==null?"":s);
 
 async function api(path){
@@ -564,9 +618,12 @@ function runOverlay(){
   const date   = params.get("date") || "";
   const opt = {
     pos:   params.get("pos")   || "bc",
-    size:  params.get("size")  || "md",
+    scale: (function(){ let s=params.get("scale"); if(s==null){ const z=params.get("size"); s = z==="sm"?82 : z==="lg"?122 : 100; } return Number(s)||100; })(),
     theme: params.get("theme") || "dark",
     names: params.get("names") || "full",
+    bg:    params.get("bg")    || "auto",
+    bgop:  params.get("bgop")!=null ? Number(params.get("bgop")) : 92,
+    accent:params.get("accent")|| "auto",
     clock: params.get("clock") !== "0",
     goals: params.get("goals") !== "0",
     subs:  params.get("subs")  !== "0",
@@ -578,7 +635,8 @@ function runOverlay(){
   const LSKEY = "placarOBS:"+league+":"+event;
   function saveOverrides(){
     try{ localStorage.setItem(LSKEY, JSON.stringify({
-      pos:opt.pos,size:opt.size,theme:opt.theme,names:opt.names,alert:opt.alert,
+      pos:opt.pos,scale:opt.scale,theme:opt.theme,names:opt.names,alert:opt.alert,
+      bg:opt.bg,bgop:opt.bgop,accent:opt.accent,
       clock:opt.clock,goals:opt.goals,subs:opt.subs,cards:opt.cards })); }catch(e){}
   }
   function loadOverrides(){
@@ -612,7 +670,12 @@ function runOverlay(){
 
   // aplica TODAS as configurações atuais ao overlay, ao vivo (sem recarregar)
   function applyOpts(){
-    bug.className = "scorebug pos-"+opt.pos+" size-"+opt.size+" theme-"+opt.theme+(opt.clock?"":" no-clock");
+    bug.className = "scorebug pos-"+opt.pos+" theme-"+opt.theme+(opt.clock?"":" no-clock");
+    bug.style.setProperty("--scale", (Number(opt.scale)||100)/100);
+    const bgv = (opt.bg && opt.bg!=="auto") ? rgbaHex(opt.bg, opt.bgop) : null;
+    if(bgv) bug.style.setProperty("--bug-bg", bgv); else bug.style.removeProperty("--bug-bg");
+    if(opt.accent && opt.accent!=="auto") bug.style.setProperty("--bug-accent", fixHex(opt.accent));
+    else bug.style.removeProperty("--bug-accent");
     paintStatic();
     if(lastSt) paintStatus(lastSt);
     else if(!opt.clock){ $("ovStatus").innerHTML=""; matchClock.stop(); }
@@ -781,6 +844,15 @@ function runOverlay(){
       `<button class="cseg${opt[key]===v?' on':''}" data-opt="${key}" data-v="${v}">${l}</button>`).join("");
     const seg = (key,opts)=>`<div class="crow segrow">`+segBtns(key,opts)+`</div>`;
     const tgl = (key,l)=>`<button class="ctg${opt[key]?' on':''}" data-tg="${key}">${l}</button>`;
+    const sw = (key,arr)=>`<div class="crow swrow">`+arr.map(c=>{
+      const on=(opt[key]||"auto")===c.v?" on":"";
+      const st=c.v==="auto"?"":`style="background:${c.v}"`;
+      return `<button class="csw${on}" data-opt="${key}" data-v="${c.v}" ${st} title="${c.t}">${c.v==="auto"?"Auto":""}</button>`;
+    }).join("")+`</div>`;
+    const BGS=[{v:"auto",t:"Automático"},{v:"#000000",t:"Preto"},{v:"#11161f",t:"Grafite"},
+      {v:"#0a1838",t:"Azul"},{v:"#0b2a16",t:"Verde"},{v:"#2a0a12",t:"Vinho"},{v:"#ffffff",t:"Branco"}];
+    const ACS=[{v:"auto",t:"Padrão"},{v:"#f4c84a",t:"Dourado"},{v:"#13c56b",t:"Verde"},
+      {v:"#ffffff",t:"Branco"},{v:"#29e0e0",t:"Ciano"},{v:"#ef4d56",t:"Vermelho"},{v:"#3b82f6",t:"Azul"}];
 
     const p=document.createElement("div");
     p.className="ov-ctrl";
@@ -788,7 +860,16 @@ function runOverlay(){
       `<div class="ch">🎛 Controle do placar<span class="x" id="ctrlX" title="Fechar (C)">✕</span></div>`+
       `<div class="clabel">Posição</div>`+
       `<div class="crow grid3">`+segBtns("pos",[["tl","↖"],["tc","↑"],["tr","↗"],["bl","↙"],["bc","↓"],["br","↘"]])+`</div>`+
-      `<div class="clabel">Tamanho</div>`+seg("size",[["sm","P"],["md","M"],["lg","G"]])+
+      `<div class="clabel">Escala <span id="ctrlScaleVal">${opt.scale}%</span></div>`+
+      `<div class="crow"><button class="cstep" data-step="scale" data-d="-10">−10</button>`+
+        `<button class="cstep" data-step="scale" data-d="-5">−5</button>`+
+        `<button class="cstep" data-step="scale" data-d="5">+5</button>`+
+        `<button class="cstep" data-step="scale" data-d="10">+10</button></div>`+
+      `<div class="clabel">Cor de fundo</div>`+sw("bg",BGS)+
+      `<div class="clabel">Opacidade do fundo <span id="ctrlOpVal">${opt.bgop}%</span></div>`+
+      `<div class="crow"><button class="cstep" data-step="bgop" data-d="-10">− menos</button>`+
+        `<button class="cstep" data-step="bgop" data-d="10">+ mais</button></div>`+
+      `<div class="clabel">Cor de destaque</div>`+sw("accent",ACS)+
       `<div class="clabel">Tema</div>`+seg("theme",[["dark","Escuro"],["light","Claro"]])+
       `<div class="clabel">Nomes</div>`+seg("names",[["abbr","Sigla"],["full","Completo"]])+
       `<div class="clabel">Estilo do aviso</div>`+seg("alert",[["full","Completo"],["min","Minimalista"]])+
@@ -817,12 +898,22 @@ function runOverlay(){
     function refreshButtons(){
       p.querySelectorAll(".cseg").forEach(b=>b.classList.toggle("on", opt[b.dataset.opt]===b.dataset.v));
       p.querySelectorAll(".ctg").forEach(b=>b.classList.toggle("on", !!opt[b.dataset.tg]));
+      p.querySelectorAll(".csw").forEach(b=>b.classList.toggle("on", (opt[b.dataset.opt]||"auto")===b.dataset.v));
     }
 
     p.addEventListener("click",(e)=>{
+      const step=e.target.closest(".cstep");
+      const swb=e.target.closest(".csw");
       const seg=e.target.closest(".cseg");
       const tg=e.target.closest(".ctg");
       const test=e.target.closest("button.db");
+      if(step){
+        const k=step.dataset.step, d=Number(step.dataset.d);
+        if(k==="scale"){ opt.scale=Math.max(50,Math.min(220,(Number(opt.scale)||100)+d)); $("ctrlScaleVal").textContent=opt.scale+"%"; }
+        if(k==="bgop"){ opt.bgop=Math.max(0,Math.min(100,(Number(opt.bgop)||92)+d)); const ov=$("ctrlOpVal"); if(ov) ov.textContent=opt.bgop+"%"; }
+        applyOpts(); saveOverrides(); return;
+      }
+      if(swb){ opt[swb.dataset.opt]=swb.dataset.v; applyOpts(); saveOverrides(); refreshButtons(); return; }
       if(seg){ opt[seg.dataset.opt]=seg.dataset.v; applyOpts(); saveOverrides(); refreshButtons(); return; }
       if(tg){ opt[tg.dataset.tg]=!opt[tg.dataset.tg]; applyOpts(); saveOverrides(); refreshButtons(); return; }
       if(test){ handleDebug(test.dataset.k, test.dataset.s); return; }
@@ -962,7 +1053,7 @@ function runConfig(){
   const now=new Date();
   $("date").value = now.toISOString().slice(0,10);
 
-  const state = { sel:null, opts:{pos:"bc",size:"md",theme:"dark",names:"full",clock:true,goals:true,subs:true,cards:true,alert:"full"} };
+  const state = { sel:null, opts:{pos:"bc",scale:100,theme:"dark",names:"full",bg:"auto",bgop:92,accent:"auto",clock:true,goals:true,subs:true,cards:true,alert:"full"} };
 
   $("loadBtn").addEventListener("click", loadMatches);
   $("league").addEventListener("change", loadMatches);
@@ -1045,6 +1136,44 @@ function runConfig(){
     });
   });
 
+  // escala e opacidade (sliders)
+  $("optScale").addEventListener("input",()=>{
+    state.opts.scale=parseInt($("optScale").value,10);
+    $("scaleVal").textContent=state.opts.scale+"%";
+    buildLink();
+  });
+  $("optBgop").addEventListener("input",()=>{
+    state.opts.bgop=parseInt($("optBgop").value,10);
+    $("bgopVal").textContent=state.opts.bgop+"%";
+    buildLink();
+  });
+  // swatches de cor (fundo e destaque)
+  function wireSwatches(rowId, key){
+    const row=$(rowId);
+    row.addEventListener("click",e=>{
+      const b=e.target.closest("button.csw"); if(!b) return;
+      row.querySelectorAll(".csw").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      state.opts[key]=b.dataset.v;
+      buildLink();
+    });
+  }
+  wireSwatches("optBg","bg");
+  wireSwatches("optAccent","accent");
+  // cor personalizada (color pickers)
+  $("bgPicker").addEventListener("input",()=>{
+    state.opts.bg=$("bgPicker").value;
+    $("optBg").querySelectorAll(".csw").forEach(x=>x.classList.remove("on"));
+    $("bgPicker").closest(".csw").classList.add("on");
+    buildLink();
+  });
+  $("accentPicker").addEventListener("input",()=>{
+    state.opts.accent=$("accentPicker").value;
+    $("optAccent").querySelectorAll(".csw").forEach(x=>x.classList.remove("on"));
+    $("accentPicker").closest(".csw").classList.add("on");
+    buildLink();
+  });
+
   // fundo da pré-visualização
   $("bgPick").addEventListener("click",e=>{
     const b=e.target.closest("button"); if(!b) return;
@@ -1059,7 +1188,7 @@ function runConfig(){
     const o=state.opts;
     const q=new URLSearchParams({
       league:state.sel.league, event:state.sel.event, date:state.sel.date,
-      pos:o.pos, size:o.size, theme:o.theme, names:o.names,
+      pos:o.pos, scale:o.scale, theme:o.theme, names:o.names, bg:o.bg, bgop:o.bgop, accent:o.accent,
       clock:o.clock?"1":"0", goals:o.goals?"1":"0", subs:o.subs?"1":"0", cards:o.cards?"1":"0", alert:o.alert
     });
     return location.origin+location.pathname+"?"+q.toString();
