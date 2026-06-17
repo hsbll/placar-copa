@@ -228,13 +228,14 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
 .pos-tc.size-md,.pos-bc.size-md{transform:translateX(-50%)}
 .pos-tc.size-lg,.pos-bc.size-lg{transform:translateX(-50%) scale(1.22)}
 
-/* card de alerta (gol / substituição) */
-.ov-alert{position:absolute;left:50%;transform:translateX(-50%) translateY(28px);
-  bottom:140px;min-width:330px;max-width:560px;font-family:var(--cond);
+/* card de alerta (gol / substituição / cartão) — posição definida via JS */
+.ov-alert{position:absolute;--ax:-50%;--ay:10px;--accent:var(--gold);
+  min-width:300px;max-width:560px;font-family:var(--cond);
   background:rgba(13,17,23,.96);border:1px solid rgba(255,255,255,.12);border-radius:14px;
-  box-shadow:0 18px 50px -12px rgba(0,0,0,.7);backdrop-filter:blur(8px);overflow:hidden;
-  opacity:0;transition:opacity .35s,transform .35s}
-.ov-alert.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  box-shadow:0 18px 50px -12px rgba(0,0,0,.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  overflow:hidden;opacity:0;transform:translate(var(--ax),var(--ay));
+  transition:opacity .35s,transform .35s}
+.ov-alert.show{opacity:1;transform:translate(var(--ax),0)}
 .ov-alert .strip{height:5px}
 .ov-alert .body{display:flex;align-items:center;gap:15px;padding:15px 20px}
 .ov-alert .a-logo{width:42px;height:42px;object-fit:contain;flex:0 0 auto}
@@ -252,21 +253,51 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
 .ov-alert .out{color:var(--red);font-weight:600}
 .ov-alert .arrow{font-size:18px}
 
-/* painel de debug do overlay (só com ?debug=1) */
-.ov-debug{position:fixed;top:12px;left:12px;z-index:60;pointer-events:auto;
-  font-family:var(--sans);background:rgba(10,14,20,.92);border:1px solid rgba(255,255,255,.15);
-  border-radius:11px;padding:11px;box-shadow:0 10px 30px -8px rgba(0,0,0,.7);
-  display:flex;flex-direction:column;gap:7px;max-width:230px}
-.ov-debug .dh{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
-  color:#f4c84a;display:flex;align-items:center;gap:6px}
-.ov-debug .dh .x{margin-left:auto;cursor:pointer;color:#94a1b4;font-size:15px;line-height:1}
-.ov-debug .drow{display:flex;gap:6px}
-.ov-debug button.db{flex:1;font-size:12px;font-weight:600;cursor:pointer;color:#e9eef4;
-  background:#222c3b;border:1px solid #374256;border-radius:7px;padding:7px 6px;transition:.12s}
-.ov-debug button.db:hover{background:#2a3340}
-.ov-debug button.db.goal:hover{border-color:#f4c84a}
-.ov-debug button.db.sub:hover{border-color:#13c56b}
-.ov-debug .dnote{font-size:10.5px;color:#5f6c7e;line-height:1.4}
+/* variante minimalista: pílula discreta, em uma linha */
+.ov-alert.minimal{min-width:0;max-width:460px;border-radius:11px;border-left:4px solid var(--accent);
+  box-shadow:0 8px 24px -8px rgba(0,0,0,.55)}
+.ov-alert.minimal .strip{display:none}
+.ov-alert.minimal .body{padding:9px 16px;gap:10px}
+.ov-alert.minimal .a-logo{width:24px;height:24px}
+.ov-alert.minimal .a-txt{display:flex;align-items:baseline;gap:9px;flex-wrap:nowrap;overflow:hidden}
+.ov-alert.minimal .a-kind{font-size:13px;letter-spacing:1px;flex:0 0 auto}
+.ov-alert.minimal .a-min{font-size:12px}
+.ov-alert.minimal .a-main{font-size:18px;margin-top:0;flex:0 0 auto}
+.ov-alert.minimal .a-sub{font-size:14px;margin-top:0;min-width:0}
+
+/* painel de controle do overlay (?control=1 ou ?debug=1) */
+.ov-ctrl{position:fixed;top:12px;left:12px;z-index:60;pointer-events:auto;
+  font-family:var(--sans);background:rgba(10,14,20,.95);border:1px solid rgba(255,255,255,.15);
+  border-radius:12px;padding:12px;box-shadow:0 14px 40px -10px rgba(0,0,0,.75);
+  display:flex;flex-direction:column;gap:5px;width:248px;max-height:94vh;overflow:auto}
+.ov-ctrl .ch{font-size:11.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:#f4c84a;display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.ov-ctrl .ch .x{margin-left:auto;cursor:pointer;color:#94a1b4;font-size:15px;line-height:1}
+.ov-ctrl .clabel{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+  color:#5f6c7e;margin-top:6px}
+.ov-ctrl .crow{display:flex;gap:5px;flex-wrap:wrap}
+.ov-ctrl .crow.grid3{display:grid;grid-template-columns:repeat(3,1fr)}
+.ov-ctrl .cseg,.ov-ctrl .ctg{flex:1;min-width:0;font-family:var(--sans);font-size:12px;font-weight:600;
+  cursor:pointer;color:#cdd6e2;background:#1b2330;border:1px solid #374256;border-radius:7px;
+  padding:7px 6px;transition:.12s;text-align:center}
+.ov-ctrl .cseg:hover,.ov-ctrl .ctg:hover{background:#222c3b}
+.ov-ctrl .cseg.on{background:#13c56b;border-color:#13c56b;color:#04130b}
+.ov-ctrl .ctg.on{background:#13c56b;border-color:#13c56b;color:#04130b}
+.ov-ctrl button.db{flex:1;min-width:0;font-size:12px;font-weight:600;cursor:pointer;color:#e9eef4;
+  background:#222c3b;border:1px solid #374256;border-radius:7px;padding:7px 4px;transition:.12s}
+.ov-ctrl button.db:hover{background:#2a3340}
+.ov-ctrl button.db.goal:hover{border-color:#f4c84a}
+.ov-ctrl button.db.sub:hover{border-color:#13c56b}
+.ov-ctrl button.db.yel:hover{border-color:#f4c84a}
+.ov-ctrl button.db.red:hover{border-color:#ef4d56}
+.ov-ctrl .creset{margin-top:8px;font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;
+  color:#94a1b4;background:transparent;border:1px solid #374256;border-radius:7px;padding:7px;transition:.12s}
+.ov-ctrl .creset:hover{color:#e9eef4;border-color:#5f6c7e}
+.ov-ctrl .dnote{font-size:10.5px;color:#5f6c7e;line-height:1.5;margin-top:6px}
+.ov-ctrl .dnote b{color:#94a1b4}
+/* cantinho invisível para abrir o painel só com o mouse (no "Interagir" do OBS) */
+.ov-ctrl-corner{position:fixed;top:0;left:0;width:26px;height:26px;z-index:59;cursor:pointer;
+  pointer-events:auto;background:transparent}
 
 .ov-loading{position:absolute;bottom:46px;left:50%;transform:translateX(-50%);
   font-family:var(--sans);font-size:13px;color:rgba(255,255,255,.7);
@@ -372,6 +403,12 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
             <button data-v="abbr">Sigla</button><button data-v="full" class="on">Completo</button>
           </div>
         </div>
+        <div class="opt">
+          <label>Estilo do aviso</label>
+          <div class="seg" id="optAlert" data-key="alert">
+            <button data-v="full" class="on">Completo</button><button data-v="min">Minimalista</button>
+          </div>
+        </div>
       </div>
       <div class="toggles" style="margin-top:18px">
         <label class="tg"><input type="checkbox" id="tgClock" checked><span class="dot"></span>Mostrar tempo de jogo</label>
@@ -427,13 +464,16 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
           <b>Como usar no OBS:</b> adicione uma fonte do tipo <code>Navegador</code> (Browser),
           cole o link acima, defina <code>Largura 1920</code> e <code>Altura 1080</code> e marque
           “Atualizar o navegador quando a cena ficar ativa”. O fundo é transparente automaticamente.<br>
-          <b>Testar avisos:</b> use os botões acima para ver como ficam os avisos de gol e substituição
-          direto na pré-visualização. O botão <code>Modo teste</code> abre o overlay com esses botões na
-          própria tela (útil para ajustar a posição no OBS). O link normal do OBS <b>não</b> mostra os
-          botões de teste.<br>
-          <b>Importante:</b> o link só funcionará no OBS depois que você <b>hospedar este arquivo</b> num site
-          (ex.: GitHub Pages, Netlify, Vercel). Abrindo direto do seu computador (<code>file://</code>) ele só
-          roda na sua máquina. O placar atualiza sozinho a cada poucos segundos.
+          <b>Ajustar ao vivo sem recolar o link:</b> o link já inclui um painel de controle embutido.
+          No OBS, clique com o botão direito na fonte → <code>Interagir</code>; na janela que abrir,
+          tecle <code>C</code> (ou clique no canto superior esquerdo) para abrir o painel e mudar posição,
+          tamanho, tema e avisos na hora. As escolhas ficam <b>salvas</b> naquela fonte — você cola o link
+          uma única vez. O painel fica oculto e <b>não aparece na transmissão</b>. Para voltar ao padrão do
+          link, use “Restaurar do link” no painel.<br>
+          <b>Testar avisos:</b> os botões acima simulam gol, cartão e substituição na pré-visualização;
+          o botão <code>Modo teste</code> abre o overlay com o painel já aberto.<br>
+          <b>Importante:</b> hospede este arquivo num site (GitHub Pages, Netlify, Vercel) para usar o link
+          no OBS. O placar atualiza sozinho a cada poucos segundos.
         </div>
       </div>
     </div>
@@ -531,11 +571,23 @@ function runOverlay(){
     goals: params.get("goals") !== "0",
     subs:  params.get("subs")  !== "0",
     cards: params.get("cards") !== "0",
+    alert: params.get("alert")==="min" ? "min" : "full",
   };
 
+  // ----- ajustes salvos: permitem mudar tudo pelo painel de controle sem recolar o link -----
+  const LSKEY = "placarOBS:"+league+":"+event;
+  function saveOverrides(){
+    try{ localStorage.setItem(LSKEY, JSON.stringify({
+      pos:opt.pos,size:opt.size,theme:opt.theme,names:opt.names,alert:opt.alert,
+      clock:opt.clock,goals:opt.goals,subs:opt.subs,cards:opt.cards })); }catch(e){}
+  }
+  function loadOverrides(){
+    try{ const s=localStorage.getItem(LSKEY); if(s) Object.assign(opt, JSON.parse(s)); }catch(e){}
+  }
+  loadOverrides();
+
   const bug = $("bug");
-  bug.classList.add("pos-"+opt.pos,"size-"+opt.size,"theme-"+opt.theme);
-  if(!opt.clock) bug.classList.add("no-clock");
+  let lastSt = null;            // último status recebido (p/ reaplicar configs ao vivo)
 
   let teams = {};            // id -> {name, abbr, logo, color, homeAway}
   let homeId=null, awayId=null;
@@ -556,6 +608,14 @@ function runOverlay(){
     if(a.logo){ $("aLogo").src=a.logo; } else $("aLogo").style.display="none";
     $("hBar").style.background = fixHex(h.color);
     $("aBar").style.background = fixHex(a.color);
+  }
+
+  // aplica TODAS as configurações atuais ao overlay, ao vivo (sem recarregar)
+  function applyOpts(){
+    bug.className = "scorebug pos-"+opt.pos+" size-"+opt.size+" theme-"+opt.theme+(opt.clock?"":" no-clock");
+    paintStatic();
+    if(lastSt) paintStatus(lastSt);
+    else if(!opt.clock){ $("ovStatus").innerHTML=""; matchClock.stop(); }
   }
 
   /* cronômetro do jogo: mostra o minuto correndo (ex 67'), sincronizando
@@ -606,13 +666,37 @@ function runOverlay(){
 
   function setScore(h,a,state){
     const hs=$("hScore"), as=$("aScore");
-    if(lastH!==null && h!==lastH){ hs.classList.remove("flash"); void hs.offsetWidth; hs.classList.add("flash");
-      if(opt.goals && primed && state==="in") queueGoalByScore(homeId); }
-    if(lastA!==null && a!==lastA){ as.classList.remove("flash"); void as.offsetWidth; as.classList.add("flash");
-      if(opt.goals && primed && state==="in") queueGoalByScore(awayId); }
+    // apenas o efeito visual no número; o AVISO de gol vem dos eventos (sem duplicar)
+    if(lastH!==null && h!==lastH){ hs.classList.remove("flash"); void hs.offsetWidth; hs.classList.add("flash"); }
+    if(lastA!==null && a!==lastA){ as.classList.remove("flash"); void as.offsetWidth; as.classList.add("flash"); }
     hs.textContent=h; as.textContent=a;
     lastH=h; lastA=a;
   }
+
+  /* posiciona o aviso colado no placar, conforme a posição escolhida */
+  function positionAlert(){
+    const bug=$("bug"), box=$("ovAlert");
+    box.style.top=box.style.bottom=box.style.left=box.style.right="";
+    const v = (opt.pos[0]==="t") ? "t" : "b";   // metade de cima / de baixo
+    const h = opt.pos[1] || "c";                 // l / c / r
+    const gap = 14;
+    box.style.setProperty("--ay", v==="t" ? "-10px" : "10px");
+    const vis = bug && bug.style.display!=="none" && bug.offsetWidth>0;
+    if(vis){
+      const r = bug.getBoundingClientRect();
+      if(v==="t") box.style.top = (r.bottom+gap)+"px";
+      else        box.style.bottom = (window.innerHeight - r.top + gap)+"px";
+      if(h==="l"){ box.style.left=r.left+"px"; box.style.setProperty("--ax","0"); }
+      else if(h==="r"){ box.style.right=(window.innerWidth - r.right)+"px"; box.style.setProperty("--ax","0"); }
+      else { box.style.left=(r.left + r.width/2)+"px"; box.style.setProperty("--ax","-50%"); }
+    } else { // fallback se o placar ainda não apareceu
+      if(v==="t") box.style.top="120px"; else box.style.bottom="120px";
+      if(h==="l"){ box.style.left="40px"; box.style.setProperty("--ax","0"); }
+      else if(h==="r"){ box.style.right="40px"; box.style.setProperty("--ax","0"); }
+      else { box.style.left="50%"; box.style.setProperty("--ax","-50%"); }
+    }
+  }
+  window.addEventListener("resize",()=>{ if(showingAlert) positionAlert(); });
 
   /* fila de alertas ------------------------------------------------- */
   function enqueue(a){ queue.push(a); if(!showingAlert) nextAlert(); }
@@ -621,7 +705,8 @@ function runOverlay(){
     showingAlert=true;
     const a=queue.shift();
     const box=$("ovAlert");
-    box.className = "ov-alert "+a.kind;
+    box.className = "ov-alert "+a.kind + (opt.alert==="min" ? " minimal" : "");
+    box.style.setProperty("--accent", a.color || "var(--gold)");
     $("alStrip").style.background = a.color || "var(--gold)";
     if(a.logo){ $("alLogo").src=a.logo; $("alLogo").style.display=""; } else $("alLogo").style.display="none";
     $("alKind").textContent = a.label;
@@ -629,17 +714,12 @@ function runOverlay(){
     $("alMin").textContent = a.min ? "· "+a.min : "";
     $("alMain").textContent = a.main || "";
     $("alSub").innerHTML = a.subHtml || "";
+    positionAlert();
     requestAnimationFrame(()=>box.classList.add("show"));
     setTimeout(()=>{
       box.classList.remove("show");
       setTimeout(nextAlert, 450);
     }, 6200);
-  }
-
-  function queueGoalByScore(teamId){
-    const t=teams[teamId]; if(!t) return;
-    enqueue({kind:"goal",label:"⚽ GOL",color:fixHex(t.color),logo:t.logo,
-      main:t.name, subHtml:"", min:""});
   }
 
   /* ---- TESTE / DEBUG: dispara avisos manualmente -------------------- */
@@ -673,13 +753,14 @@ function runOverlay(){
         min, main:t.name||"", subHtml:"Marcador (teste)"});
     }
   }
-  // incrementa o placar de verdade (dispara o efeito do número mudando + aviso de gol)
+  // incrementa o placar de verdade (efeito do número mudando + aviso de gol)
   function bumpScore(side){
     let h=parseInt($("hScore").textContent,10)||0;
     let a=parseInt($("aScore").textContent,10)||0;
     if(side==="away") a++; else h++;
     primed = true;
     setScore(h,a,"in");
+    fireTest("goal", side);
   }
   function handleDebug(kind, side){
     if(kind==="bump") bumpScore(side); else fireTest(kind, side);
@@ -691,29 +772,73 @@ function runOverlay(){
     if(d && d.source==="placar-debug" && d.kind) handleDebug(d.kind, d.side);
   });
 
-  // painel de teste na própria tela (só com ?debug=1)
-  if(params.get("debug")==="1"){
+  /* ---- PAINEL DE CONTROLE (ajustar tudo ao vivo, sem recolar o link) ----
+     Ativado com ?control=1 (fica oculto) ou ?debug=1 (já aberto).
+     No OBS: clique direito na fonte -> "Interagir", e tecle C (ou clique no
+     canto superior esquerdo) para abrir/fechar. As escolhas ficam salvas. */
+  if(params.get("control")==="1" || params.get("debug")==="1"){
+    const segBtns = (key,opts)=>opts.map(([v,l])=>
+      `<button class="cseg${opt[key]===v?' on':''}" data-opt="${key}" data-v="${v}">${l}</button>`).join("");
+    const seg = (key,opts)=>`<div class="crow segrow">`+segBtns(key,opts)+`</div>`;
+    const tgl = (key,l)=>`<button class="ctg${opt[key]?' on':''}" data-tg="${key}">${l}</button>`;
+
     const p=document.createElement("div");
-    p.className="ov-debug";
+    p.className="ov-ctrl";
     p.innerHTML=
-      `<div class="dh">⚙ Modo teste<span class="x" id="dbgX" title="Fechar">✕</span></div>`+
-      `<div class="drow"><button class="db goal" data-k="goal" data-s="home">⚽ Gol mand.</button>`+
-        `<button class="db goal" data-k="goal" data-s="away">⚽ Gol vis.</button></div>`+
-      `<div class="drow"><button class="db goal" data-k="bump" data-s="home">+1 mand.</button>`+
-        `<button class="db goal" data-k="bump" data-s="away">+1 vis.</button></div>`+
-      `<div class="drow"><button class="db sub" data-k="sub" data-s="home">⇄ Sub mand.</button>`+
-        `<button class="db sub" data-k="sub" data-s="away">⇄ Sub vis.</button></div>`+
-      `<div class="drow"><button class="db yel" data-k="yellow" data-s="home">🟨 Amar. mand.</button>`+
-        `<button class="db yel" data-k="yellow" data-s="away">🟨 Amar. vis.</button></div>`+
-      `<div class="drow"><button class="db red" data-k="red" data-s="home">🟥 Verm. mand.</button>`+
-        `<button class="db red" data-k="red" data-s="away">🟥 Verm. vis.</button></div>`+
-      `<div class="dnote">Estes botões não aparecem no link normal do OBS.</div>`;
+      `<div class="ch">🎛 Controle do placar<span class="x" id="ctrlX" title="Fechar (C)">✕</span></div>`+
+      `<div class="clabel">Posição</div>`+
+      `<div class="crow grid3">`+segBtns("pos",[["tl","↖"],["tc","↑"],["tr","↗"],["bl","↙"],["bc","↓"],["br","↘"]])+`</div>`+
+      `<div class="clabel">Tamanho</div>`+seg("size",[["sm","P"],["md","M"],["lg","G"]])+
+      `<div class="clabel">Tema</div>`+seg("theme",[["dark","Escuro"],["light","Claro"]])+
+      `<div class="clabel">Nomes</div>`+seg("names",[["abbr","Sigla"],["full","Completo"]])+
+      `<div class="clabel">Estilo do aviso</div>`+seg("alert",[["full","Completo"],["min","Minimalista"]])+
+      `<div class="clabel">Mostrar</div>`+
+      `<div class="crow tgrow">`+tgl("clock","Tempo")+tgl("goals","Gols")+tgl("subs","Subs")+tgl("cards","Cartões")+`</div>`+
+      `<div class="clabel">Testar aviso</div>`+
+      `<div class="crow"><button class="db goal" data-k="goal" data-s="home">⚽ mand.</button>`+
+        `<button class="db goal" data-k="goal" data-s="away">⚽ vis.</button>`+
+        `<button class="db goal" data-k="bump" data-s="home">+1 m</button>`+
+        `<button class="db goal" data-k="bump" data-s="away">+1 v</button></div>`+
+      `<div class="crow"><button class="db sub" data-k="sub" data-s="home">⇄ mand.</button>`+
+        `<button class="db sub" data-k="sub" data-s="away">⇄ vis.</button>`+
+        `<button class="db yel" data-k="yellow" data-s="home">🟨 m</button>`+
+        `<button class="db yel" data-k="yellow" data-s="away">🟨 v</button>`+
+        `<button class="db red" data-k="red" data-s="home">🟥 m</button>`+
+        `<button class="db red" data-k="red" data-s="away">🟥 v</button></div>`+
+      `<button class="creset" id="ctrlReset">↺ Restaurar do link</button>`+
+      `<div class="dnote">Tecle <b>C</b> para mostrar/ocultar. Não aparece na transmissão quando fechado.</div>`;
     document.body.appendChild(p);
+
+    // começa oculto (control=1); aberto se debug=1
+    let open = params.get("debug")==="1";
+    const apply = ()=>{ p.style.display = open ? "flex" : "none"; };
+    apply();
+
+    function refreshButtons(){
+      p.querySelectorAll(".cseg").forEach(b=>b.classList.toggle("on", opt[b.dataset.opt]===b.dataset.v));
+      p.querySelectorAll(".ctg").forEach(b=>b.classList.toggle("on", !!opt[b.dataset.tg]));
+    }
+
     p.addEventListener("click",(e)=>{
-      const b=e.target.closest("button.db");
-      if(b){ handleDebug(b.dataset.k, b.dataset.s); return; }
-      if(e.target.id==="dbgX") p.remove();
+      const seg=e.target.closest(".cseg");
+      const tg=e.target.closest(".ctg");
+      const test=e.target.closest("button.db");
+      if(seg){ opt[seg.dataset.opt]=seg.dataset.v; applyOpts(); saveOverrides(); refreshButtons(); return; }
+      if(tg){ opt[tg.dataset.tg]=!opt[tg.dataset.tg]; applyOpts(); saveOverrides(); refreshButtons(); return; }
+      if(test){ handleDebug(test.dataset.k, test.dataset.s); return; }
+      if(e.target.id==="ctrlX"){ open=false; apply(); return; }
+      if(e.target.id==="ctrlReset"){ try{localStorage.removeItem(LSKEY);}catch(_){ } location.reload(); return; }
     });
+
+    // atalho de teclado: C abre/fecha
+    window.addEventListener("keydown",(e)=>{
+      if((e.key==="c"||e.key==="C") && !e.metaKey && !e.ctrlKey){ open=!open; apply(); }
+    });
+    // canto invisível clicável (para quem usa só o mouse no "Interagir")
+    const corner=document.createElement("div");
+    corner.className="ov-ctrl-corner"; corner.title="Abrir controle";
+    corner.addEventListener("click",()=>{ open=!open; apply(); });
+    document.body.appendChild(corner);
   }
 
   /* extrai gols e substituições do summary -------------------------- */
@@ -769,9 +894,9 @@ function runOverlay(){
   /* ---- ciclo de atualização ---- */
   let interval = 15000;
   async function tick(){
-    let state="pre";
+    let state="pre", gotScore=false;
     try{
-      // 1) placar + status + times/logos/cores (via scoreboard da data)
+      // 1) FONTE PRINCIPAL do placar/status/times (scoreboard da data)
       if(date){
         const sb = await api(`${league}/scoreboard?dates=${date}`);
         const evt = (sb.events||[]).find(e=>e.id===event);
@@ -787,25 +912,31 @@ function runOverlay(){
             abbr:away.team.abbreviation, logo:away.team.logo, color:away.team.color, homeAway:"away"};
           paintStatic();
           const st = comp.status; state = st?.type?.state || "pre";
+          lastSt = st;
           paintStatus(st);
           setScore(parseInt(home.score||"0",10), parseInt(away.score||"0",10), state);
+          gotScore=true;
           $("ovLoading").style.display="none";
           $("bug").style.display="flex";
         }
       }
-      // 2) eventos (gols/subs) via summary — só quando faz sentido
-      if(state!=="pre" && (opt.goals || opt.subs)){
+      // 2) eventos (gols/subs/cartões) via summary
+      if(state!=="pre" && (opt.goals || opt.subs || opt.cards)){
         try{
           const sum = await api(`${league}/summary?event=${event}`);
-          // alguns retornos trazem o placar mais fresco no header
-          const comp = sum.header?.competitions?.[0];
-          if(comp){
-            const st = comp.status; const cs = comp.competitors||[];
-            const home = cs.find(c=>c.homeAway==="home"); const away = cs.find(c=>c.homeAway==="away");
-            if(home&&away){
-              state = st?.type?.state || state;
-              paintStatus(st);
-              setScore(parseInt(home.score||"0",10), parseInt(away.score||"0",10), state);
+          // só usa o placar do summary se o scoreboard NÃO trouxe (evita conflito entre fontes)
+          if(!gotScore){
+            const comp = sum.header?.competitions?.[0];
+            if(comp){
+              const st = comp.status; const cs = comp.competitors||[];
+              const home = cs.find(c=>c.homeAway==="home"); const away = cs.find(c=>c.homeAway==="away");
+              if(home&&away){
+                state = st?.type?.state || state;
+                lastSt = st;
+                paintStatus(st);
+                setScore(parseInt(home.score||"0",10), parseInt(away.score||"0",10), state);
+                $("ovLoading").style.display="none"; $("bug").style.display="flex";
+              }
             }
           }
           handleKeyEvents(sum.keyEvents);
@@ -819,6 +950,7 @@ function runOverlay(){
     interval = state==="in" ? 12000 : (state==="post" ? 60000 : 30000);
     setTimeout(tick, interval);
   }
+  applyOpts();   // aplica posição/tema/etc (inclui ajustes salvos) antes de começar
   tick();
 }
 
@@ -830,7 +962,7 @@ function runConfig(){
   const now=new Date();
   $("date").value = now.toISOString().slice(0,10);
 
-  const state = { sel:null, opts:{pos:"bc",size:"md",theme:"dark",names:"full",clock:true,goals:true,subs:true,cards:true} };
+  const state = { sel:null, opts:{pos:"bc",size:"md",theme:"dark",names:"full",clock:true,goals:true,subs:true,cards:true,alert:"full"} };
 
   $("loadBtn").addEventListener("click", loadMatches);
   $("league").addEventListener("change", loadMatches);
@@ -928,18 +1060,18 @@ function runConfig(){
     const q=new URLSearchParams({
       league:state.sel.league, event:state.sel.event, date:state.sel.date,
       pos:o.pos, size:o.size, theme:o.theme, names:o.names,
-      clock:o.clock?"1":"0", goals:o.goals?"1":"0", subs:o.subs?"1":"0", cards:o.cards?"1":"0"
+      clock:o.clock?"1":"0", goals:o.goals?"1":"0", subs:o.subs?"1":"0", cards:o.cards?"1":"0", alert:o.alert
     });
     return location.origin+location.pathname+"?"+q.toString();
   }
 
   function buildLink(){
-    const url=buildOverlayURL();
-    if(!url) return;
-    $("linkOut").value=url;
-    // pré-visualização usa caminho relativo (funciona inclusive em file://)
-    const rel="?"+url.split("?")[1];
-    $("previewIframe").src=rel;
+    const base=buildOverlayURL();
+    if(!base) return;
+    // link do OBS já vem com control=1 (permite ajustar tudo ao vivo, via "Interagir")
+    $("linkOut").value = base + "&control=1";
+    // pré-visualização usa caminho relativo e SEM control (fica limpa)
+    $("previewIframe").src = "?"+base.split("?")[1];
   }
 
   $("copyBtn").addEventListener("click",async()=>{
@@ -952,8 +1084,8 @@ function runConfig(){
     const v=$("linkOut").value; if(v) window.open(v,"_blank");
   });
   $("openTestBtn").addEventListener("click",()=>{
-    const v=$("linkOut").value; if(!v) return;
-    window.open(v+"&debug=1","_blank");
+    const base=buildOverlayURL(); if(!base) return;
+    window.open(base+"&debug=1","_blank");  // abre já com o painel de controle aberto
   });
 
   // botões de teste: enviam o comando para a pré-visualização (iframe)
